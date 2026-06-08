@@ -35,15 +35,15 @@ namespace WindowsFormsApp1
             Microsoft.Reporting.WinForms.ReportDataSource reportDataSource7 = new Microsoft.Reporting.WinForms.ReportDataSource();
             Microsoft.Reporting.WinForms.ReportDataSource reportDataSource8 = new Microsoft.Reporting.WinForms.ReportDataSource();
             this.ChiTietPhieuThueBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.DoAnTotNghiepDataSet = new WindowsFormsApp1.DoAnTotNghiepDataSet();
+            this.DoAnTotNghiepDataSet = new WindowsFormsApp1.DataSet();
             this.MayAnhBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.KhachHangBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.PhieuThueBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.reportViewer1 = new Microsoft.Reporting.WinForms.ReportViewer();
-            this.ChiTietPhieuThueTableAdapter = new WindowsFormsApp1.DoAnTotNghiepDataSetTableAdapters.ChiTietPhieuThueTableAdapter();
-            this.MayAnhTableAdapter = new WindowsFormsApp1.DoAnTotNghiepDataSetTableAdapters.MayAnhTableAdapter();
-            this.KhachHangTableAdapter = new WindowsFormsApp1.DoAnTotNghiepDataSetTableAdapters.KhachHangTableAdapter();
-            this.PhieuThueTableAdapter = new WindowsFormsApp1.DoAnTotNghiepDataSetTableAdapters.PhieuThueTableAdapter();
+            this.ChiTietPhieuThueTableAdapter = new WindowsFormsApp1.DataSetTableAdapters.ChiTietPhieuThueTableAdapter();
+            this.MayAnhTableAdapter = new WindowsFormsApp1.DataSetTableAdapters.MayAnhTableAdapter();
+            this.KhachHangTableAdapter = new WindowsFormsApp1.DataSetTableAdapters.KhachHangTableAdapter();
+            this.PhieuThueTableAdapter = new WindowsFormsApp1.DataSetTableAdapters.PhieuThueTableAdapter();
             ((System.ComponentModel.ISupportInitialize)(this.ChiTietPhieuThueBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.DoAnTotNghiepDataSet)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.MayAnhBindingSource)).BeginInit();
@@ -136,13 +136,13 @@ namespace WindowsFormsApp1
 
         private Microsoft.Reporting.WinForms.ReportViewer reportViewer1;
         private System.Windows.Forms.BindingSource ChiTietPhieuThueBindingSource;
-        private DoAnTotNghiepDataSet DoAnTotNghiepDataSet;
+        private DataSet DoAnTotNghiepDataSet;
         private System.Windows.Forms.BindingSource MayAnhBindingSource;
         private System.Windows.Forms.BindingSource KhachHangBindingSource;
-        private DoAnTotNghiepDataSetTableAdapters.ChiTietPhieuThueTableAdapter ChiTietPhieuThueTableAdapter;
-        private DoAnTotNghiepDataSetTableAdapters.MayAnhTableAdapter MayAnhTableAdapter;
-        private DoAnTotNghiepDataSetTableAdapters.KhachHangTableAdapter KhachHangTableAdapter;
+        private DataSetTableAdapters.ChiTietPhieuThueTableAdapter ChiTietPhieuThueTableAdapter;
+        private DataSetTableAdapters.MayAnhTableAdapter MayAnhTableAdapter;
+        private DataSetTableAdapters.KhachHangTableAdapter KhachHangTableAdapter;
         private System.Windows.Forms.BindingSource PhieuThueBindingSource;
-        private DoAnTotNghiepDataSetTableAdapters.PhieuThueTableAdapter PhieuThueTableAdapter;
+        private DataSetTableAdapters.PhieuThueTableAdapter PhieuThueTableAdapter;
     }
 }

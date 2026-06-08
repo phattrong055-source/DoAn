@@ -14,7 +14,8 @@ namespace WindowsFormsApp1
     public partial class KhachHang : Form
     {
 
-        private string connectionString = @"Data Source=DESKTOP-K3O3CHO;Initial Catalog=DoAnTotNghiep;Integrated Security=True";
+        string nguon = @"Data Source=DESKTOP-S4KUUMQ\SQLEXPRESS;Initial Catalog=DoAnTotNghiep;Integrated Security=True";
+
 
         private SqlConnection conn = null;
         private bool isThem = true; // Kiểm tra xem người dùng đang ấn "Thêm" hay "Sửa"
@@ -26,12 +27,13 @@ namespace WindowsFormsApp1
 
         private void KhachHang_Load(object sender, EventArgs e)
         {
-            conn = new SqlConnection(connectionString);
-
+            conn = new SqlConnection(nguon);
             RegisterEvents();
             LoadData();
-            LoadSdtToComboBox(); // Lấy danh sách SĐT đổ vào ComboBox khi lên giao diện
             SetInterfaceState(true);
+
+            // Đổi tên hiển thị cho nút tìm kiếm (nếu cần)
+            btnTimKiem.Text = "Tìm kiếm";
         }
 
         // Hàm đăng ký sự kiện cho các nút bấm và lưới dữ liệu
@@ -45,42 +47,56 @@ namespace WindowsFormsApp1
             btnLamMoi.Click += btnLamMoi_Click;
             dataGridView1.CellClick += dataGridView1_CellClick;
 
-            // Đăng ký sự kiện khi chọn 1 mục trong ComboBox
-            comboBox1.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
+            // Đăng ký sự kiện khi bấm nút tìm kiếm
+            btnTimKiem.Click += btnTimKiem_Click;
         }
+        // SỰ KIỆN KHI BẤM NÚT TÌM KIẾM
+        private void btnTimKiem_Click(object sender, EventArgs e)
+        {
+            string sdtTimKiem = txtTimKiem.Text.Trim();
 
-        // HÀM ĐỔ DANH SÁCH SỐ ĐIỆN THOẠI VÀO COMBOBOX
-        private void LoadSdtToComboBox()
+            // Nếu ô tìm kiếm trống thì tải lại toàn bộ danh sách
+            if (string.IsNullOrEmpty(sdtTimKiem))
+            {
+                LoadData();
+            }
+            else
+            {
+                TimKiemKhachHangTheoSdt(sdtTimKiem);
+            }
+        }
+        // HÀM LỌC DỮ LIỆU THEO SĐT ĐÃ NHẬP TỪ TEXTBOX
+        private void TimKiemKhachHangTheoSdt(string sdt)
         {
             try
             {
                 if (conn.State == ConnectionState.Closed) conn.Open();
 
-                // Lấy các SĐT không trùng nhau và không bị rỗng
-                string query = "SELECT DISTINCT sdt FROM KhachHang WHERE sdt IS NOT NULL AND sdt != ''";
-                SqlCommand cmd = new SqlCommand(query, conn);
-                SqlDataReader reader = cmd.ExecuteReader();
+                // Sử dụng LIKE để tìm kiếm chứa chuỗi (tìm gần đúng)
+                string query = "SELECT maKhachHang AS [Mã KH], hoTen AS [Họ Tên], sdt AS [Số ĐT], " +
+                               "diaChi AS [Địa Chỉ], email AS [Email], cccd AS [CCCD/CMND], ngayTao AS [Ngày Tạo] " +
+                               "FROM KhachHang WHERE sdt LIKE '%' + @sdt + '%'";
 
-                comboBox1.Items.Clear();
-                comboBox1.Items.Add("--- Tất cả ---"); // Lựa chọn mặc định để hiển thị lại toàn bộ
+                SqlDataAdapter da = new SqlDataAdapter(query, conn);
+                da.SelectCommand.Parameters.AddWithValue("@sdt", sdt);
 
-                while (reader.Read())
-                {
-                    comboBox1.Items.Add(reader["sdt"].ToString());
-                }
-                reader.Close();
+                DataTable dt = new DataTable();
+                da.Fill(dt);
 
-                comboBox1.SelectedIndex = 0; // Mặc định chọn dòng đầu tiên
+                dataGridView1.DataSource = dt;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi khi tải danh sách SĐT vào ComboBox: " + ex.Message, "Thông báo lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Lỗi khi lọc dữ liệu: " + ex.Message, "Thông báo lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
                 if (conn.State == ConnectionState.Open) conn.Close();
             }
         }
+
+        // HÀM ĐỔ DANH SÁCH SỐ ĐIỆN THOẠI VÀO COMBOBOX
+
 
         // Hàm tải dữ liệu  DataGridView
         private void LoadData()
@@ -183,6 +199,7 @@ namespace WindowsFormsApp1
         }
 
         // Hàm làm sạch dữ liệu cũ trên các ô TextBox
+        
         private void ClearInputFields()
         {
             txtMaKhachHang.Clear();
@@ -193,7 +210,8 @@ namespace WindowsFormsApp1
             txtDiaChi.Clear();
             dtpNgayTao.Value = DateTime.Now;
 
-            if (comboBox1.Items.Count > 0) comboBox1.SelectedIndex = 0;
+            // Xóa trắng cả ô nhập tìm kiếm
+            txtTimKiem.Clear();
         }
 
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -265,7 +283,7 @@ namespace WindowsFormsApp1
 
                     ClearInputFields();
                     LoadData();
-                    LoadSdtToComboBox(); // Cập nhật lại ComboBox sau khi xóa dữ liệu
+                    
                 }
                 catch (Exception ex)
                 {
@@ -363,7 +381,7 @@ namespace WindowsFormsApp1
 
                 SetInterfaceState(true);
                 LoadData();
-                LoadSdtToComboBox(); // Cập nhật lại danh sách SĐT mới lưu
+                
             }
             catch (Exception ex)
             {
@@ -388,7 +406,7 @@ namespace WindowsFormsApp1
         {
             ClearInputFields();
             LoadData();
-            LoadSdtToComboBox(); 
+           
             MessageBox.Show("Hệ thống đã cập nhật và làm mới lại danh sách dữ liệu!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -399,20 +417,7 @@ namespace WindowsFormsApp1
             this.Hide();
         }
 
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            
-            if (comboBox1.SelectedIndex == 0 || comboBox1.SelectedItem == null)
-            {
-                LoadData();
-            }
-            else
-            {
-                
-                string sdtDuocChon = comboBox1.SelectedItem.ToString();
-                LocKhachHangTheoSdt(sdtDuocChon);
-            }
-        }
+        
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
@@ -431,11 +436,11 @@ namespace WindowsFormsApp1
             this.Hide();
         }
 
-        private void btnThongKe_Click(object sender, EventArgs e)
+       /* private void btnThongKe_Click(object sender, EventArgs e)
         {
             FormThongKe fFormThongKe = new FormThongKe();
             fFormThongKe.Show();
             this.Hide();
-        }
+        }*/
     }
 }

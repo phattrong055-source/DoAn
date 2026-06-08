@@ -56,11 +56,11 @@ namespace WindowsFormsApp1
                 this.reportViewer1.LocalReport.ReportEmbeddedResource = "WindowsFormsApp1.ReportInPhieu.rdlc";
                 this.reportViewer1.LocalReport.DataSources.Clear();
 
-                DoAnTotNghiepDataSet ds = new DoAnTotNghiepDataSet();
-                var phieuThueAdapter = new DoAnTotNghiepDataSetTableAdapters.PhieuThueTableAdapter();
-                var chiTietAdapter = new DoAnTotNghiepDataSetTableAdapters.ChiTietPhieuThueTableAdapter();
-                var khachHangAdapter = new DoAnTotNghiepDataSetTableAdapters.KhachHangTableAdapter();
-                var mayAnhAdapter = new DoAnTotNghiepDataSetTableAdapters.MayAnhTableAdapter();
+                DataSet ds = new DataSet();
+                var phieuThueAdapter = new DataSetTableAdapters.PhieuThueTableAdapter();
+                var chiTietAdapter = new DataSetTableAdapters.ChiTietPhieuThueTableAdapter();
+                var khachHangAdapter = new DataSetTableAdapters.KhachHangTableAdapter();
+                var mayAnhAdapter = new DataSetTableAdapters.MayAnhTableAdapter();
 
                 phieuThueAdapter.Fill(ds.PhieuThue);
                 khachHangAdapter.Fill(ds.KhachHang);
@@ -74,7 +74,7 @@ namespace WindowsFormsApp1
                 }
 
 
-                chiTietAdapter.Fill(ds.ChiTietPhieuThue, maPhieuHienTai);
+                //chiTietAdapter.Fill(ds.ChiTietPhieuThue, maPhieuHienTai);
 
                 // 2. Liên kết dữ liệu bảng động DataSet1 từ lưới chính
                 if (_dtChiTiet != null && _dtChiTiet.Rows.Count > 0)

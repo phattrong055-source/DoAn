@@ -8,69 +8,158 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.SqlClient;
+using System.Globalization;
 
 namespace WindowsFormsApp1
 {
     public partial class FormPhieuThue : Form
     {
-        // Chuỗi kết nối Database
-        string nguon = @"Data Source=DESKTOP-K3O3CHO;Initial Catalog=DoAnTotNghiep;Integrated Security=True";
+        string nguon = @"Data Source=DESKTOP-S4KUUMQ\SQLEXPRESS;Initial Catalog=DoAnTotNghiep;Integrated Security=True";
         string lenh = "";
         SqlConnection KetNoi;
         SqlCommand THucHien;
         SqlDataReader Doc;
-
-        // Biến lưu trữ DataTable làm nguồn cho dataGridView2 để tránh lỗi khi thao tác dòng
-        DataTable dtMayAnhTrongKho = new DataTable();
-
         public FormPhieuThue()
         {
             InitializeComponent();
+            CauHinhHienThiTienVND();
             LoadDuLieu();
         }
-
-        private void FormPhieuThue_Load(object sender, EventArgs e)
+        private string FormatTienVND(decimal soTien)
         {
+            return string.Format(CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} VNĐ", soTien);
         }
 
-        // Tải dữ liệu khách hàng và máy ảnh từ SQL
-        void LoadDuLieu()
+        private void CauHinhHienThiTienVND()
         {
-            using (SqlConnection conn = new SqlConnection(nguon))
-            {
-                try
-                {
-                    conn.Open();
-                    string sqlKH = @"SELECT maKhachHang, hoTen, sdt, diaChi, email, cccd, ngayTao FROM dbo.KhachHang";
-                    SqlDataAdapter daKH = new SqlDataAdapter(sqlKH, conn);
-                    DataTable dtKH = new DataTable();
-                    daKH.Fill(dtKH);
-                    dataGridView1.DataSource = dtKH;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Lỗi tải danh sách khách hàng: " + ex.Message);
-                }
+            dataGridView2.CellFormatting += DinhDangTienVNDTrongBang;
+            dataGridView3.CellFormatting += DinhDangTienVNDTrongBang;
 
-                try
+            txtTienCoc.Leave += TxtTienCoc_Leave;
+        }
+
+        private void DinhDangTienVNDTrongBang(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            DataGridView dgv = sender as DataGridView;
+
+            if (dgv == null || e.RowIndex < 0 || e.ColumnIndex < 0)
+            {
+                return;
+            }
+
+            string tenCot = dgv.Columns[e.ColumnIndex].Name;
+
+            if (tenCot == "giaThueTheoGio" ||
+                tenCot == "giaThueTheoNgay" ||
+                tenCot == "DonGia" ||
+                tenCot == "ThanhTien")
+            {
+                if (e.Value != null && e.Value != DBNull.Value)
                 {
-                    string sqlMA = @"SELECT maMay, tenMay, hangMay, soSerial, loaiThietBi, chuyenChup, giaThueTheoGio, giaThueTheoNgay, trangThai, moTa FROM dbo.MayAnh WHERE trangThai = N'Sẵn Sàng'";
-                    SqlDataAdapter daMA = new SqlDataAdapter(sqlMA, conn);
-                    dtMayAnhTrongKho = new DataTable();
-                    daMA.Fill(dtMayAnhTrongKho);
-                    dataGridView2.DataSource = dtMayAnhTrongKho;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Lỗi tải danh sách máy ảnh: " + ex.Message);
+                    decimal soTien;
+
+                    if (decimal.TryParse(e.Value.ToString(), out soTien))
+                    {
+                        e.Value = FormatTienVND(soTien);
+                        e.FormattingApplied = true;
+                    }
                 }
             }
         }
 
-        // Tìm kiếm khách hàng theo số điện thoại
+        private void TxtTienCoc_Leave(object sender, EventArgs e)
+        {
+            decimal tienCoc;
+
+            if (TryParseMoney(txtTienCoc.Text, out tienCoc))
+            {
+                txtTienCoc.Text = FormatTienVND(tienCoc);
+            }
+        }
+
+        void LoadDuLieu()
+        {
+            SqlConnection conn = new SqlConnection(nguon);
+
+            try
+            {
+                conn.Open();
+
+                string sql = @"SELECT maKhachHang, hoTen, sdt, diaChi, email, cccd, ngayTao FROM dbo.KhachHang";
+
+                SqlDataAdapter da = new SqlDataAdapter(sql, conn);
+
+                DataTable dt = new DataTable();
+
+                da.Fill(dt);
+
+                dataGridView1.DataSource = dt;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+
+            try
+            {
+                conn.Open();
+
+                string sql = @"SELECT maMay, tenMay, hangMay, soSerial, loaiThietBi, chuyenChup, giaThueTheoGio, giaThueTheoNgay, trangThai, moTa FROM dbo.MayAnh";
+
+                SqlDataAdapter da = new SqlDataAdapter(sql, conn);
+
+                DataTable dt = new DataTable();
+
+                da.Fill(dt);
+
+                dataGridView2.DataSource = dt;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+
+
+        }
+        private void btnPhuKien_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnDangXuat_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+               "Bạn có chắc chắn muốn đăng xuất không?",
+               "Xác nhận",
+               MessageBoxButtons.YesNo,
+               MessageBoxIcon.Question
+           );
+
+            if (result == DialogResult.Yes)
+            {
+                FormDangNhap frm = new FormDangNhap();
+                frm.Show();
+                this.Hide();
+            }
+        }
+
         private void btnTimKiemKH_Click(object sender, EventArgs e)
         {
-            string sdtTim = txtTimKiemKH.Text.Trim();
+            string sdtTim = txtTimKiemKH.Text.Trim(); // txtSDT là ô nhập SDT
+
             if (string.IsNullOrEmpty(sdtTim))
             {
                 MessageBox.Show("Vui lòng nhập số điện thoại để tìm kiếm.");
@@ -82,16 +171,23 @@ namespace WindowsFormsApp1
                 try
                 {
                     conn.Open();
-                    string sql = @"SELECT maKhachHang, hoTen, sdt, diaChi, email, cccd, ngayTao FROM KhachHang WHERE sdt = @sdt";
+                    string sql = @"SELECT maKhachHang, hoTen, sdt, diaChi, email, cccd, ngayTao 
+                           FROM KhachHang 
+                           WHERE sdt = @sdt";
+
                     SqlCommand cmd = new SqlCommand(sql, conn);
                     cmd.Parameters.AddWithValue("@sdt", sdtTim);
+
                     SqlDataAdapter da = new SqlDataAdapter(cmd);
                     DataTable dt = new DataTable();
                     da.Fill(dt);
 
                     if (dt.Rows.Count > 0)
                     {
+                        // Hiển thị dữ liệu lên DataGridView
                         dataGridView1.DataSource = dt;
+
+                        // Điền thông tin khách hàng vào các TextBox
                         txtHoTen.Text = dt.Rows[0]["hoTen"].ToString();
                         txtSDT.Text = dt.Rows[0]["sdt"].ToString();
                         txtDiaChi.Text = dt.Rows[0]["diaChi"].ToString();
@@ -101,6 +197,7 @@ namespace WindowsFormsApp1
                     else
                     {
                         MessageBox.Show("Không tìm thấy khách hàng, vui lòng nhập thông tin mới.");
+
                         txtHoTen.Text = "";
                         txtDiaChi.Text = "";
                         txtEmail.Text = "";
@@ -109,15 +206,15 @@ namespace WindowsFormsApp1
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Lỗi tìm kiếm khách hàng: " + ex.Message);
+                    MessageBox.Show("Lỗi tìm kiếm: " + ex.Message);
                 }
             }
         }
 
-        // Tìm kiếm máy ảnh theo tên máy
         private void btnTimKiemMA_Click_1(object sender, EventArgs e)
         {
-            string tenMayTim = txtTimKiemMA.Text.Trim();
+            string tenMayTim = txtTimKiemMA.Text.Trim(); // txtTimKiemMA là ô nhập tên máy
+
             if (string.IsNullOrEmpty(tenMayTim))
             {
                 MessageBox.Show("Vui lòng nhập tên máy để tìm kiếm.");
@@ -129,13 +226,27 @@ namespace WindowsFormsApp1
                 try
                 {
                     conn.Open();
-                    string sql = @"SELECT maMay, tenMay, hangMay, soSerial, loaiThietBi, chuyenChup, giaThueTheoGio, giaThueTheoNgay, trangThai, moTa FROM MayAnh WHERE tenMay LIKE @tenMay AND trangThai = N'Sẵn Sàng'";
+                    string sql = @"SELECT maMay, tenMay, hangMay, soSerial, loaiThietBi, chuyenChup, 
+                                  giaThueTheoGio, giaThueTheoNgay, trangThai, moTa 
+                           FROM MayAnh 
+                           WHERE tenMay LIKE @tenMay";
+
                     SqlCommand cmd = new SqlCommand(sql, conn);
                     cmd.Parameters.AddWithValue("@tenMay", "%" + tenMayTim + "%");
+
                     SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    dtMayAnhTrongKho = new DataTable();
-                    da.Fill(dtMayAnhTrongKho);
-                    dataGridView2.DataSource = dtMayAnhTrongKho;
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+
+                    if (dt.Rows.Count > 0)
+                    {
+                        dataGridView2.DataSource = dt;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Không tìm thấy máy ảnh phù hợp.");
+                        dataGridView2.DataSource = null;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -144,192 +255,284 @@ namespace WindowsFormsApp1
             }
         }
 
-        // Thêm máy ảnh đang chọn vào chi tiết phiếu thuê (dataGridView3)
+
+
+
         private void btnThemMA_Click_1(object sender, EventArgs e)
         {
             if (dataGridView2.CurrentRow == null)
             {
-                MessageBox.Show("Vui lòng chọn máy ảnh từ danh sách trống.");
+                MessageBox.Show("Vui lòng chọn máy.");
                 return;
             }
 
             DataGridViewRow row = dataGridView2.CurrentRow;
-            int maMay = Convert.ToInt32(row.Cells["maMay"].Value);
-            string tenMay = row.Cells["tenMay"].Value.ToString();
-            string soSerial = row.Cells["soSerial"].Value?.ToString() ?? "";
-            decimal giaGio = Convert.ToDecimal(row.Cells["giaThueTheoGio"].Value);
-            decimal giaNgay = Convert.ToDecimal(row.Cells["giaThueTheoNgay"].Value);
-            string trangThai = row.Cells["trangThai"].Value.ToString();
 
-            if (trangThai != "Sẵn Sàng")
+            int maMay = Convert.ToInt32(
+                row.Cells["maMay"].Value);
+
+            string tenMay =
+                row.Cells["tenMay"]
+                .Value.ToString();
+
+            decimal giaGio =
+                Convert.ToDecimal(
+                row.Cells["giaThueTheoGio"]
+                .Value);
+
+            decimal giaNgay =
+                Convert.ToDecimal(
+                row.Cells["giaThueTheoNgay"]
+                .Value);
+
+            string trangThai =
+                row.Cells["trangThai"]
+                .Value.ToString();
+
+            // KIỂM TRA TRẠNG THÁI
+
+            if (trangThai != "Còn ? CH")
             {
-                MessageBox.Show("Máy hiện tại không sẵn sàng để thuê. Trạng thái: " + trangThai);
+                MessageBox.Show(
+                    "Máy hiện đang: "
+                    + trangThai);
+
                 return;
             }
 
-            // Kiểm tra xem máy đã tồn tại trong phiếu chưa
+            // KHÔNG CHO THÊM TRÙNG
+
             foreach (DataGridViewRow r in dataGridView3.Rows)
             {
-                if (!r.IsNewRow && r.Cells["MaMay"].Value != null)
+                if (!r.IsNewRow &&
+                    r.Cells["MaMay"].Value != null)
                 {
-                    if (Convert.ToInt32(r.Cells["MaMay"].Value) == maMay)
+                    int maTonTai =
+                        Convert.ToInt32(
+                        r.Cells["MaMay"]
+                        .Value);
+
+                    if (maTonTai == maMay)
                     {
-                        MessageBox.Show("Máy này đã được thêm vào danh sách phiếu thuê.");
+                        MessageBox.Show(
+                            "Máy đã có trong phiếu thuê.\nXóa khỏi chi tiết mới thêm lại được."
+                        );
+
                         return;
                     }
                 }
             }
 
-            bool coGio = !string.IsNullOrEmpty(txtGioThue.Text);
-            bool coNgay = !string.IsNullOrEmpty(txtNgayThue.Text);
+            bool coGio =
+                !string.IsNullOrEmpty(
+                txtGioThue.Text);
+
+            bool coNgay =
+                !string.IsNullOrEmpty(
+                txtNgayThue.Text);
 
             if (coGio && coNgay)
             {
-                MessageBox.Show("Chỉ được nhập số giờ hoặc số ngày thuê.");
+                MessageBox.Show(
+                    "Chỉ nhập giờ hoặc ngày."
+                );
+
                 return;
             }
+
             if (!coGio && !coNgay)
             {
-                MessageBox.Show("Vui lòng điền số lượng thời gian thuê mong muốn.");
+                MessageBox.Show(
+                    "Nhập thời gian thuê."
+                );
+
                 return;
             }
 
-            DateTime ngayNhan = dtpNgayNhan.Value;
-            DateTime ngayTra = dtpNgayTra.Value;
+            DateTime ngayNhan =
+                dtpNgayNhan.Value;
 
-            if (ngayTra < ngayNhan)
+            DateTime ngayTra =
+                dtpNgayTra.Value;
+
+            if (ngayTra.Date <
+                ngayNhan.Date)
             {
-                MessageBox.Show("Ngày hẹn trả máy không được nhỏ hơn ngày nhận máy.");
+                MessageBox.Show(
+                    "Ngày trả phải bằng hoặc lớn hơn ngày nhận."
+                );
+
                 return;
             }
 
-            int soNgayToiDa = (ngayTra.Date - ngayNhan.Date).Days;
-            if (soNgayToiDa == 0) soNgayToiDa = 1;
+            int soNgayToiDa =
+                (ngayTra.Date -
+                ngayNhan.Date)
+                .Days;
 
-            int soGioToiDa = (int)(ngayTra - ngayNhan).TotalHours;
-            if (soGioToiDa <= 0) soGioToiDa = 24;
+            if (soNgayToiDa == 0)
+                soNgayToiDa = 1;
 
-            decimal thanhTien = 0;
+            int soGioToiDa =
+                (int)
+                (
+                ngayTra -
+                ngayNhan
+                ).TotalHours;
+
+            if (soGioToiDa <= 0)
+                soGioToiDa = 24;
+
             decimal donGia = 0;
+            decimal thanhTien = 0;
+
             string thoiGianThue = "";
+
             int soLuong = 1;
+
+            // THUÊ GIỜ
 
             if (coGio)
             {
-                if (!int.TryParse(txtGioThue.Text, out int soGio) || soGio <= 0)
+                int soGio;
+
+                if (!int.TryParse(
+                    txtGioThue.Text,
+                    out soGio))
                 {
-                    MessageBox.Show("Số giờ thuê nhập vào không hợp lệ.");
+                    MessageBox.Show(
+                        "Số giờ không hợp lệ."
+                    );
+
                     return;
                 }
-                if (soGio > soGioToiDa)
+
+                if (soGio >
+                    soGioToiDa)
                 {
-                    MessageBox.Show("Số giờ vượt quá giới hạn khung ngày: Tối đa " + soGioToiDa + " giờ.");
+                    MessageBox.Show(
+                        "Tối đa "
+                        + soGioToiDa
+                        + " giờ"
+                    );
+
                     return;
                 }
+
                 donGia = giaGio;
-                thanhTien = giaGio * soGio;
-                thoiGianThue = soGio + " giờ";
+
+                thanhTien =
+                    giaGio *
+                    soGio;
+
+                thoiGianThue =
+                    soGio +
+                    " giờ";
             }
+
+            // THUÊ NGÀY
 
             if (coNgay)
             {
-                if (!int.TryParse(txtNgayThue.Text, out int soNgay) || soNgay <= 0)
+                int soNgay;
+
+                if (!int.TryParse(
+                    txtNgayThue.Text,
+                    out soNgay))
                 {
-                    MessageBox.Show("Số ngày thuê nhập vào không hợp lệ.");
+                    MessageBox.Show(
+                        "Số ngày không hợp lệ."
+                    );
+
                     return;
                 }
-                if (soNgay > soNgayToiDa)
+
+                if (soNgay >
+                    soNgayToiDa)
                 {
-                    MessageBox.Show("Số ngày vượt quá giới hạn khung ngày: Tối đa " + soNgayToiDa + " ngày.");
+                    MessageBox.Show(
+                        "Tối đa "
+                        + soNgayToiDa
+                        + " ngày"
+                    );
+
                     return;
                 }
-                donGia = giaNgay;
-                thanhTien = giaNgay * soNgay;
-                thoiGianThue = soNgay + " ngày";
+
+                donGia =
+                    giaNgay;
+
+                thanhTien =
+                    giaNgay *
+                    soNgay;
+
+                thoiGianThue =
+                    soNgay +
+                    " ngày";
             }
 
-            // Thêm thông tin vào Grid3 (Chi tiết phiếu)
-            int index = dataGridView3.Rows.Add();
-            dataGridView3.Rows[index].Cells["MaMay"].Value = maMay;
-            dataGridView3.Rows[index].Cells["TenMay"].Value = tenMay;
-            dataGridView3.Rows[index].Cells["ThoiGianThue"].Value = thoiGianThue;
-            dataGridView3.Rows[index].Cells["SoLuong"].Value = soLuong;
-            dataGridView3.Rows[index].Cells["DonGia"].Value = donGia;
-            dataGridView3.Rows[index].Cells["ThanhTien"].Value = thanhTien;
-            dataGridView3.Rows[index].Cells["GhiChu"].Value = soSerial; // Tạm dùng cột ghi chú lưu Serial để form In lấy ra
+            // THÊM VÀO CHI TIẾT
 
-            // Xóa dòng an toàn khỏi DataTable liên kết với dataGridView2
-            if (dataGridView2.DataSource is DataTable dt)
-            {
-                int currencyIndex = dataGridView2.CurrentRow.Index;
-                dt.Rows[currencyIndex].Delete();
-                dt.AcceptChanges();
-            }
+            int index =
+                dataGridView3
+                .Rows.Add();
+
+            dataGridView3
+                .Rows[index]
+                .Cells["MaMay"]
+                .Value = maMay;
+
+            dataGridView3
+                .Rows[index]
+                .Cells["TenMay"]
+                .Value = tenMay;
+
+            dataGridView3
+                .Rows[index]
+                .Cells["ThoiGianThue"]
+                .Value =
+                thoiGianThue;
+
+            dataGridView3
+                .Rows[index]
+                .Cells["SoLuong"]
+                .Value =
+                soLuong;
+
+            dataGridView3
+                .Rows[index]
+                .Cells["DonGia"]
+                .Value =
+                donGia;
+
+            dataGridView3
+                .Rows[index]
+                .Cells["ThanhTien"]
+                .Value =
+                thanhTien;
+
+            dataGridView3
+                .Rows[index]
+                .Cells["GhiChu"]
+                .Value = "";
+
+            // XÓA KHỎI DANH SÁCH MÁY
+
+            dataGridView2.Rows.Remove(
+                dataGridView2.CurrentRow);
 
             txtGioThue.Clear();
             txtNgayThue.Clear();
-            CapNhatTongTien();
-            CapNhatTongSoMay();
-            MessageBox.Show("Đã thêm máy ảnh vào phiếu thành công.");
-        }
-
-        // Xóa máy ảnh khỏi phiếu thuê và hoàn lại danh sách trống
-        private void btnXoaMA_Click_1(object sender, EventArgs e)
-        {
-            if (dataGridView3.CurrentRow == null || dataGridView3.CurrentRow.IsNewRow)
-            {
-                MessageBox.Show("Vui lòng chọn dòng máy ảnh hợp lệ muốn xóa khỏi phiếu.");
-                return;
-            }
-
-            int maMay = Convert.ToInt32(dataGridView3.CurrentRow.Cells["MaMay"].Value);
-            dataGridView3.Rows.Remove(dataGridView3.CurrentRow);
-
-            // Kiểm tra xem máy đã có trong Grid kho chưa, nếu chưa thì tải lại kho
-            bool mayDaCo = false;
-            foreach (DataGridViewRow row in dataGridView2.Rows)
-            {
-                if (!row.IsNewRow && row.Cells["maMay"].Value != null && Convert.ToInt32(row.Cells["maMay"].Value) == maMay)
-                {
-                    mayDaCo = true;
-                    break;
-                }
-            }
-
-            if (!mayDaCo)
-            {
-                using (SqlConnection conn = new SqlConnection(nguon))
-                {
-                    try
-                    {
-                        conn.Open();
-                        string sql = "SELECT maMay, tenMay, hangMay, soSerial, loaiThietBi, chuyenChup, giaThueTheoGio, giaThueTheoNgay, trangThai, moTa FROM MayAnh WHERE maMay=@maMay";
-                        SqlCommand cmd = new SqlCommand(sql, conn);
-                        cmd.Parameters.AddWithValue("@maMay", maMay);
-                        SqlDataAdapter da = new SqlDataAdapter(cmd);
-                        DataTable dtTmp = new DataTable();
-                        da.Fill(dtTmp);
-
-                        if (dtTmp.Rows.Count > 0 && dataGridView2.DataSource is DataTable dtSource)
-                        {
-                            DataRow newRow = dtSource.NewRow();
-                            newRow.ItemArray = dtTmp.Rows[0].ItemArray;
-                            dtSource.Rows.Add(newRow);
-                            dtSource.AcceptChanges();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Lỗi khi hoàn trả máy về danh sách: " + ex.Message);
-                    }
-                }
-            }
 
             CapNhatTongTien();
             CapNhatTongSoMay();
-        }
 
-        void CapNhatTongTien()
+            MessageBox.Show(
+                "Thêm máy thành công."
+            );
+        }
+        // Hàm cập nhật tổng tiền thuê
+        private void CapNhatTongTien()
         {
             decimal tong = 0;
 
@@ -337,116 +540,273 @@ namespace WindowsFormsApp1
             {
                 if (!row.IsNewRow && row.Cells["ThanhTien"].Value != null)
                 {
-                    tong += Convert.ToDecimal(row.Cells["ThanhTien"].Value);
+                    decimal thanhTien;
+
+                    if (TryParseMoney(row.Cells["ThanhTien"].Value.ToString(), out thanhTien))
+                    {
+                        tong += thanhTien * 10;
+                    }
                 }
             }
 
-            // Tổng tiền thuê
-            txtTongTienThue.Text = tong.ToString("N0");
-
-            // Tiền cọc = 50%
-            decimal tienCoc = tong / 2;
-            txtTienCoc.Text = tienCoc.ToString("N0");
+            txtTongTienThue.Text = FormatTienVND(tong);
         }
 
-        void CapNhatTongSoMay()
+        // Hàm cập nhật tổng số máy
+        private void CapNhatTongSoMay()
         {
             int tongMay = 0;
             foreach (DataGridViewRow row in dataGridView3.Rows)
             {
-                if (!row.IsNewRow && row.Cells["SoLuong"].Value != null)
+                if (row.Cells["SoLuong"].Value != null && row.Cells["SoLuong"].Value != DBNull.Value)
                 {
                     if (int.TryParse(row.Cells["SoLuong"].Value.ToString(), out int soLuong))
                     {
-                        tongMay += soLuong;
+                        tongMay += soLuong *10;
                     }
                 }
             }
             txtTongSoMay.Text = tongMay.ToString();
         }
 
-        // Tải thông tin phụ kiện đi kèm khi nhấn chọn máy ở dataGridView2
+        // Khi xóa máy khỏi chi tiết phiếu thuê
+        private void btnXoaMA_Click(object sender, EventArgs e)
+        {
+            if (dataGridView3.CurrentRow == null || dataGridView3.CurrentRow.IsNewRow) return;
+
+            dataGridView3.Rows.Remove(dataGridView3.CurrentRow);
+
+            // Cập nhật tổng tiền và tổng số máy
+            CapNhatTongTien();
+            CapNhatTongSoMay();
+        }
+
+        private void btnXoaMA_Click_1(object sender, EventArgs e)
+        {
+
+
+            if (dataGridView3.CurrentRow == null)
+            {
+                MessageBox.Show("Vui lòng chọn máy muốn thu hồi.");
+                return;
+            }
+
+            // Kiểm tra xem có phải dòng mới không
+            if (dataGridView3.CurrentRow.IsNewRow)
+            {
+                MessageBox.Show("Không thể xóa dòng này vì là dòng mới chưa thêm dữ liệu.");
+                return;
+            }
+
+            // Lấy thông tin máy từ dòng đang chọn
+            int maMay = Convert.ToInt32(dataGridView3.CurrentRow.Cells["MaMay"].Value);
+
+            // Xóa máy khỏi DataGridView chi tiết phiếu thuê
+            dataGridView3.Rows.Remove(dataGridView3.CurrentRow);
+
+            // Kiểm tra xem máy này đã có trong DataGridView máy ảnh chưa
+            bool mayDaCo = false;
+            foreach (DataGridViewRow row in dataGridView2.Rows)
+            {
+                if (!row.IsNewRow && Convert.ToInt32(row.Cells["maMay"].Value) == maMay)
+                {
+                    mayDaCo = true;
+                    break;
+                }
+            }
+
+            // Nếu máy chưa có trong DataGridView máy ảnh, thêm lại
+            if (!mayDaCo)
+            {
+                using (SqlConnection conn = new SqlConnection(nguon))
+                {
+                    conn.Open();
+                    SqlCommand cmd = new SqlCommand(
+                        "SELECT maMay, tenMay, hangMay, soSerial, chuyenChup, giaThueTheoGio, giaThueTheoNgay, trangThai " +
+                        "FROM MayAnh WHERE maMay=@maMay", conn);
+                    cmd.Parameters.AddWithValue("@maMay", maMay);
+
+                    SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+
+                    foreach (DataRow r in dt.Rows)
+                    {
+                        dataGridView2.Rows.Add(
+                            r["maMay"],
+                            r["tenMay"],
+                            r["hangMay"],
+                            r["soSerial"],
+                            r["chuyenChup"],
+                            r["giaThueTheoGio"],
+                            r["giaThueTheoNgay"],
+                            r["trangThai"]
+                        );
+                    }
+                }
+            }
+
+            // Cập nhật lại tổng tiền sau khi xóa máy
+            decimal tongTien = 0;
+            foreach (DataGridViewRow r in dataGridView3.Rows)
+            {
+                if (!r.IsNewRow && r.Cells["ThanhTien"].Value != null)
+                {
+                    decimal thanhTien;
+
+                    if (TryParseMoney(r.Cells["ThanhTien"].Value.ToString(), out thanhTien))
+                    {
+                        tongTien += thanhTien;
+                    }
+                }
+            }
+            txtTongTienThue.Text = FormatTienVND(tongTien);
+        }
+
+
+
         private void dataGridView2_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (dataGridView2.CurrentRow == null) return;
+
             int maMay = Convert.ToInt32(dataGridView2.CurrentRow.Cells["maMay"].Value);
 
-            cbPin.Checked = false; cbHatSang.Checked = false; cbChanMay.Checked = false; cbFlash.Checked = false;
-            txtPin.Text = "0"; txtSLHatSang.Text = "0"; txtSLChanMay.Text = "0"; txtSLFlash.Text = "0";
+            // Reset checkbox và số lượng
+            cbPin.Checked = false;
+            cbHatSang.Checked = false;
+            cbChanMay.Checked = false;
+            cbFlash.Checked = false;
+
+            txtPin.Text = "0";
+            txtSLHatSang.Text = "0";
+            txtSLChanMay.Text = "0";
+            txtSLFlash.Text = "0";
 
             using (SqlConnection conn = new SqlConnection(nguon))
             {
-                try
-                {
-                    conn.Open();
-                    string sql = @"SELECT maPhuKien, soLuong FROM PhuKienMay WHERE maMay=@maMay";
-                    SqlCommand cmd = new SqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@maMay", maMay);
-                    SqlDataReader reader = cmd.ExecuteReader();
-                    while (reader.Read())
-                    {
-                        int maPhuKien = Convert.ToInt32(reader["maPhuKien"]);
-                        int soLuong = Convert.ToInt32(reader["soLuong"]);
+                conn.Open();
+                string sql = @"SELECT maPhuKien, soLuong 
+                       FROM PhuKienMay 
+                       WHERE maMay=@maMay";
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@maMay", maMay);
+                SqlDataReader reader = cmd.ExecuteReader();
 
-                        switch (maPhuKien)
-                        {
-                            case 1: cbPin.Checked = true; txtPin.Text = soLuong.ToString(); break;
-                            case 2: cbHatSang.Checked = true; txtSLHatSang.Text = soLuong.ToString(); break;
-                            case 3: cbChanMay.Checked = true; txtSLChanMay.Text = soLuong.ToString(); break;
-                            case 4: cbFlash.Checked = true; txtSLFlash.Text = soLuong.ToString(); break;
-                        }
-                    }
-                    reader.Close();
-                }
-                catch (Exception ex)
+                while (reader.Read())
                 {
-                    MessageBox.Show("Lỗi lấy phụ kiện đi kèm: " + ex.Message);
+                    int maPhuKien = Convert.ToInt32(reader["maPhuKien"]);
+                    int soLuong = Convert.ToInt32(reader["soLuong"]);
+
+                    // Tick checkbox và hiển thị số lượng
+                    switch (maPhuKien)
+                    {
+                        case 1:
+                            cbPin.Checked = true;
+                            txtPin.Text = soLuong.ToString();
+                            break;
+                        case 2:
+                            cbHatSang.Checked = true;
+                            txtSLHatSang.Text = soLuong.ToString();
+                            break;
+                        case 3:
+                            cbChanMay.Checked = true;
+                            txtSLChanMay.Text = soLuong.ToString();
+                            break;
+                        case 4:
+                            cbFlash.Checked = true;
+                            txtSLFlash.Text = soLuong.ToString();
+                            break;
+                    }
                 }
+                reader.Close();
             }
+
+
         }
 
-        // Lưu thông tin phiếu thuê xuống Cơ sở dữ liệu sử dụng Transaction
         private void btnLuu_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtHoTen.Text)) { MessageBox.Show("Vui lòng điền thông tin tên khách hàng."); return; }
-            if (string.IsNullOrWhiteSpace(txtSDT.Text)) { MessageBox.Show("Vui lòng bổ sung số điện thoại khách hàng."); return; }
+            if (string.IsNullOrWhiteSpace(txtHoTen.Text))
+            {
+                MessageBox.Show("Vui lòng nhập họ tên khách hàng.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtSDT.Text))
+            {
+                MessageBox.Show("Vui lòng nhập số điện thoại khách hàng.");
+                return;
+            }
 
             bool coMayTrongPhieu = false;
             foreach (DataGridViewRow r in dataGridView3.Rows)
             {
-                if (!r.IsNewRow) { coMayTrongPhieu = true; break; }
+                if (!r.IsNewRow)
+                {
+                    coMayTrongPhieu = true;
+                    break;
+                }
             }
+
             if (!coMayTrongPhieu)
             {
-                MessageBox.Show("Vui lòng bổ sung ít nhất một thiết bị máy ảnh vào danh sách chọn.");
+                MessageBox.Show("Vui lòng thêm máy vào phiếu thuê trước khi lưu.");
                 return;
             }
 
-            if (!int.TryParse(txtTongSoMay.Text.Trim(), out int tongSoMay)) { MessageBox.Show("Tổng số lượng máy lỗi."); return; }
-            if (!TryParseMoney(txtTongTienThue.Text, out decimal tongTienThue)) { MessageBox.Show("Tổng tiền tính toán lỗi."); return; }
+            int tongSoMay;
+            decimal tongTienThue;
+            decimal tienCoc;
 
-            decimal tienCoc = 0;
-            if (!string.IsNullOrWhiteSpace(txtTienCoc.Text) && !TryParseMoney(txtTienCoc.Text, out tienCoc))
+            if (!int.TryParse(txtTongSoMay.Text.Trim(), out tongSoMay))
             {
-                MessageBox.Show("Số tiền đặt cọc nhập vào không hợp lệ.");
+                MessageBox.Show("Tổng số máy không hợp lệ.");
+                return;
+            }
+
+            if (!TryParseMoney(txtTongTienThue.Text, out tongTienThue))
+            {
+                MessageBox.Show("Tổng tiền thuê không hợp lệ.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtTienCoc.Text))
+            {
+                tienCoc = 0;
+            }
+            else if (!TryParseMoney(txtTienCoc.Text, out tienCoc))
+            {
+                MessageBox.Show("Tiền cọc không hợp lệ.");
                 return;
             }
 
             using (SqlConnection conn = new SqlConnection(nguon))
             {
                 conn.Open();
+
                 SqlTransaction transaction = conn.BeginTransaction();
+
                 try
                 {
                     int maKhachHang;
+
                     string hoTen = txtHoTen.Text.Trim();
                     string sdt = txtSDT.Text.Trim();
                     string diaChi = txtDiaChi.Text.Trim();
                     string email = txtEmail.Text.Trim();
                     string cccd = txtCCCD.Text.Trim();
 
-                    SqlCommand checkKH = new SqlCommand(@"SELECT maKhachHang FROM KhachHang WHERE sdt = @sdt", conn, transaction);
+                    // 1. KIỂM TRA KHÁCH HÀNG CŨ THEO SỐ ĐIỆN THOẠI
+                    SqlCommand checkKH = new SqlCommand(
+                        @"SELECT maKhachHang 
+                          FROM KhachHang 
+                          WHERE sdt = @sdt",
+                        conn,
+                        transaction
+                    );
+
                     checkKH.Parameters.AddWithValue("@sdt", sdt);
+
                     object result = checkKH.ExecuteScalar();
 
                     if (result != null && result != DBNull.Value)
@@ -455,24 +815,44 @@ namespace WindowsFormsApp1
                     }
                     else
                     {
+                        // Lỗi bạn gặp là do maKhachHang trong SQL không tự tăng IDENTITY.
+                        // Vì vậy đoạn này tự lấy MAX(maKhachHang) + 1 rồi insert vào bảng KhachHang.
                         bool maKhachHangTuTangTrongSQL = IsIdentityColumn(conn, transaction, "KhachHang", "maKhachHang");
+
                         if (maKhachHangTuTangTrongSQL)
                         {
                             SqlCommand insertKH = new SqlCommand(
-                                @"INSERT INTO KhachHang (hoTen, sdt, diaChi, email, cccd, ngayTao) VALUES (@hoTen, @sdt, @diaChi, @email, @cccd, @ngayTao); SELECT CAST(SCOPE_IDENTITY() AS INT);", conn, transaction);
+                                @"INSERT INTO KhachHang
+                                  (hoTen, sdt, diaChi, email, cccd, ngayTao)
+                                  VALUES
+                                  (@hoTen, @sdt, @diaChi, @email, @cccd, @ngayTao);
+                                  SELECT CAST(SCOPE_IDENTITY() AS INT);",
+                                conn,
+                                transaction
+                            );
+
                             insertKH.Parameters.AddWithValue("@hoTen", hoTen);
                             insertKH.Parameters.AddWithValue("@sdt", sdt);
                             insertKH.Parameters.AddWithValue("@diaChi", diaChi);
                             insertKH.Parameters.AddWithValue("@email", email);
                             insertKH.Parameters.AddWithValue("@cccd", cccd);
                             insertKH.Parameters.AddWithValue("@ngayTao", DateTime.Now);
+
                             maKhachHang = Convert.ToInt32(insertKH.ExecuteScalar());
                         }
                         else
                         {
                             maKhachHang = GetNextId(conn, transaction, "KhachHang", "maKhachHang");
+
                             SqlCommand insertKH = new SqlCommand(
-                                @"INSERT INTO KhachHang (maKhachHang, hoTen, sdt, diaChi, email, cccd, ngayTao) VALUES (@maKhachHang, @hoTen, @sdt, @diaChi, @email, @cccd, @ngayTao);", conn, transaction);
+                                @"INSERT INTO KhachHang
+                                  (maKhachHang, hoTen, sdt, diaChi, email, cccd, ngayTao)
+                                  VALUES
+                                  (@maKhachHang, @hoTen, @sdt, @diaChi, @email, @cccd, @ngayTao);",
+                                conn,
+                                transaction
+                            );
+
                             insertKH.Parameters.AddWithValue("@maKhachHang", maKhachHang);
                             insertKH.Parameters.AddWithValue("@hoTen", hoTen);
                             insertKH.Parameters.AddWithValue("@sdt", sdt);
@@ -480,16 +860,29 @@ namespace WindowsFormsApp1
                             insertKH.Parameters.AddWithValue("@email", email);
                             insertKH.Parameters.AddWithValue("@cccd", cccd);
                             insertKH.Parameters.AddWithValue("@ngayTao", DateTime.Now);
+
                             insertKH.ExecuteNonQuery();
                         }
                     }
 
+                    // 2. LƯU PHIẾU THUÊ
                     int maPhieuThue;
                     bool maPhieuThueTuTangTrongSQL = IsIdentityColumn(conn, transaction, "PhieuThue", "maPhieuThue");
+
                     if (maPhieuThueTuTangTrongSQL)
                     {
                         SqlCommand insertPT = new SqlCommand(
-                            @"INSERT INTO PhieuThue (maKhachHang, ngayLap, ngayNhanMay, ngayDuKienTra, tongSoMayThue, tongTienThue, tienCoc, taiSanCoc, ghiChu, trangThai) VALUES (@maKhachHang, @ngayLap, @ngayNhanMay, @ngayDuKienTra, @tongSoMayThue, @tongTienThue, @tienCoc, @taiSanCoc, @ghiChu, @trangThai); SELECT CAST(SCOPE_IDENTITY() AS INT);", conn, transaction);
+                            @"INSERT INTO PhieuThue
+                              (maKhachHang, ngayLap, ngayNhanMay, ngayDuKienTra,
+                               tongSoMayThue, tongTienThue, tienCoc, taiSanCoc, ghiChu, trangThai)
+                              VALUES
+                              (@maKhachHang, @ngayLap, @ngayNhanMay, @ngayDuKienTra,
+                               @tongSoMayThue, @tongTienThue, @tienCoc, @taiSanCoc, @ghiChu, @trangThai);
+                              SELECT CAST(SCOPE_IDENTITY() AS INT);",
+                            conn,
+                            transaction
+                        );
+
                         insertPT.Parameters.AddWithValue("@maKhachHang", maKhachHang);
                         insertPT.Parameters.AddWithValue("@ngayLap", dtpNgayLap.Value);
                         insertPT.Parameters.AddWithValue("@ngayNhanMay", dtpNgayNhan.Value);
@@ -500,13 +893,24 @@ namespace WindowsFormsApp1
                         insertPT.Parameters.AddWithValue("@taiSanCoc", txtTaiSanCoc.Text.Trim());
                         insertPT.Parameters.AddWithValue("@ghiChu", "");
                         insertPT.Parameters.AddWithValue("@trangThai", "Đang thuê");
+
                         maPhieuThue = Convert.ToInt32(insertPT.ExecuteScalar());
                     }
                     else
                     {
                         maPhieuThue = GetNextId(conn, transaction, "PhieuThue", "maPhieuThue");
+
                         SqlCommand insertPT = new SqlCommand(
-                            @"INSERT INTO PhieuThue (maPhieuThue, maKhachHang, ngayLap, ngayNhanMay, ngayDuKienTra, tongSoMayThue, tongTienThue, tienCoc, taiSanCoc, ghiChu, trangThai) VALUES (@maPhieuThue, @maKhachHang, @ngayLap, @ngayNhanMay, @ngayDuKienTra, @tongSoMayThue, @tongTienThue, @tienCoc, @taiSanCoc, @ghiChu, @trangThai);", conn, transaction);
+                            @"INSERT INTO PhieuThue
+                              (maPhieuThue, maKhachHang, ngayLap, ngayNhanMay, ngayDuKienTra,
+                               tongSoMayThue, tongTienThue, tienCoc, taiSanCoc, ghiChu, trangThai)
+                              VALUES
+                              (@maPhieuThue, @maKhachHang, @ngayLap, @ngayNhanMay, @ngayDuKienTra,
+                               @tongSoMayThue, @tongTienThue, @tienCoc, @taiSanCoc, @ghiChu, @trangThai);",
+                            conn,
+                            transaction
+                        );
+
                         insertPT.Parameters.AddWithValue("@maPhieuThue", maPhieuThue);
                         insertPT.Parameters.AddWithValue("@maKhachHang", maKhachHang);
                         insertPT.Parameters.AddWithValue("@ngayLap", dtpNgayLap.Value);
@@ -518,15 +922,31 @@ namespace WindowsFormsApp1
                         insertPT.Parameters.AddWithValue("@taiSanCoc", txtTaiSanCoc.Text.Trim());
                         insertPT.Parameters.AddWithValue("@ghiChu", "");
                         insertPT.Parameters.AddWithValue("@trangThai", "Đang thuê");
+
                         insertPT.ExecuteNonQuery();
                     }
 
+                    // 3. LƯU CHI TIẾT PHIẾU THUÊ TỪ DATAGRIDVIEW3
+                    // Bảng của bạn đang có cột khóa chính là maChiTiet, không phải maChiTietPhieuThue.
+                    // Vì vậy cần tự kiểm tra đúng tên cột rồi insert mã chi tiết vào.
                     string tenCotMaChiTiet = "";
-                    if (ColumnExists(conn, transaction, "ChiTietPhieuThue", "maChiTiet")) tenCotMaChiTiet = "maChiTiet";
-                    else if (ColumnExists(conn, transaction, "ChiTietPhieuThue", "maChiTietPhieuThue")) tenCotMaChiTiet = "maChiTietPhieuThue";
+
+                    if (ColumnExists(conn, transaction, "ChiTietPhieuThue", "maChiTiet"))
+                    {
+                        tenCotMaChiTiet = "maChiTiet";
+                    }
+                    else if (ColumnExists(conn, transaction, "ChiTietPhieuThue", "maChiTietPhieuThue"))
+                    {
+                        tenCotMaChiTiet = "maChiTietPhieuThue";
+                    }
 
                     bool coCotMaChiTiet = tenCotMaChiTiet != "";
-                    bool maChiTietTuTangTrongSQL = coCotMaChiTiet && IsIdentityColumn(conn, transaction, "ChiTietPhieuThue", tenCotMaChiTiet);
+                    bool maChiTietTuTangTrongSQL = false;
+
+                    if (coCotMaChiTiet)
+                    {
+                        maChiTietTuTangTrongSQL = IsIdentityColumn(conn, transaction, "ChiTietPhieuThue", tenCotMaChiTiet);
+                    }
 
                     foreach (DataGridViewRow row in dataGridView3.Rows)
                     {
@@ -534,48 +954,79 @@ namespace WindowsFormsApp1
 
                         int maMay = Convert.ToInt32(row.Cells["MaMay"].Value);
                         string thoiGianThue = row.Cells["ThoiGianThue"].Value.ToString();
-                        int soLuongThue = Convert.ToInt32(row.Cells["SoLuong"].Value);
+                        int soLuong = Convert.ToInt32(row.Cells["SoLuong"].Value);
                         decimal donGia = Convert.ToDecimal(row.Cells["DonGia"].Value);
                         decimal thanhTien = Convert.ToDecimal(row.Cells["ThanhTien"].Value);
-                        string ghiChu = row.Cells["GhiChu"].Value?.ToString() ?? "";
+
+                        string ghiChu = "";
+                        if (row.Cells["GhiChu"].Value != null)
+                        {
+                            ghiChu = row.Cells["GhiChu"].Value.ToString();
+                        }
 
                         SqlCommand insertCT;
+
                         if (coCotMaChiTiet && !maChiTietTuTangTrongSQL)
                         {
                             int maChiTiet = GetNextId(conn, transaction, "ChiTietPhieuThue", tenCotMaChiTiet);
+
                             insertCT = new SqlCommand(
-                                @"INSERT INTO ChiTietPhieuThue ([" + tenCotMaChiTiet + @"], maPhieuThue, maMay, thoiGianThue, soLuongThue, donGia, thanhTien, ghiChu) VALUES (@maChiTiet, @maPhieuThue, @maMay, @thoiGianThue, @soLuongThue, @donGia, @thanhTien, @ghiChu)", conn, transaction);
+                                @"INSERT INTO ChiTietPhieuThue
+                                  ([" + tenCotMaChiTiet + @"], maPhieuThue, maMay, thoiGianThue, soLuongThue, donGia, thanhTien, ghiChu)
+                                  VALUES
+                                  (@maChiTiet, @maPhieuThue, @maMay, @thoiGianThue, @soLuongThue, @donGia, @thanhTien, @ghiChu)",
+                                conn,
+                                transaction
+                            );
+
                             insertCT.Parameters.AddWithValue("@maChiTiet", maChiTiet);
                         }
                         else
                         {
                             insertCT = new SqlCommand(
-                                @"INSERT INTO ChiTietPhieuThue (maPhieuThue, maMay, thoiGianThue, soLuongThue, donGia, thanhTien, ghiChu) VALUES (@maPhieuThue, @maMay, @thoiGianThue, @soLuongThue, @donGia, @thanhTien, @ghiChu)", conn, transaction);
+                                @"INSERT INTO ChiTietPhieuThue
+                                  (maPhieuThue, maMay, thoiGianThue, soLuongThue, donGia, thanhTien, ghiChu)
+                                  VALUES
+                                  (@maPhieuThue, @maMay, @thoiGianThue, @soLuongThue, @donGia, @thanhTien, @ghiChu)",
+                                conn,
+                                transaction
+                            );
                         }
 
                         insertCT.Parameters.AddWithValue("@maPhieuThue", maPhieuThue);
                         insertCT.Parameters.AddWithValue("@maMay", maMay);
                         insertCT.Parameters.AddWithValue("@thoiGianThue", thoiGianThue);
-                        insertCT.Parameters.AddWithValue("@soLuongThue", soLuongThue);
+                        insertCT.Parameters.AddWithValue("@soLuongThue", soLuong);
                         insertCT.Parameters.AddWithValue("@donGia", donGia);
                         insertCT.Parameters.AddWithValue("@thanhTien", thanhTien);
                         insertCT.Parameters.AddWithValue("@ghiChu", ghiChu);
+
                         insertCT.ExecuteNonQuery();
 
-                        SqlCommand updateMay = new SqlCommand(@"UPDATE MayAnh SET trangThai = @trangThai WHERE maMay = @maMay", conn, transaction);
+                        // 4. CẬP NHẬT TRẠNG THÁI MÁY SAU KHI LƯU PHIẾU THUÊ
+                        SqlCommand updateMay = new SqlCommand(
+                            @"UPDATE MayAnh
+                              SET trangThai = @trangThai
+                              WHERE maMay = @maMay",
+                            conn,
+                            transaction
+                        );
+
                         updateMay.Parameters.AddWithValue("@trangThai", "Đang thuê");
                         updateMay.Parameters.AddWithValue("@maMay", maMay);
                         updateMay.ExecuteNonQuery();
                     }
 
                     transaction.Commit();
-                    MessageBox.Show("Lưu toàn bộ hóa đơn phiếu thuê thành công!");
+
+                    MessageBox.Show("Lưu phiếu thuê thành công!");
+
                     LamMoiSauKhiLuu();
                 }
                 catch (Exception ex)
                 {
                     transaction.Rollback();
-                    MessageBox.Show("Gặp lỗi hệ thống dữ liệu. Giao dịch Rollback: " + ex.Message);
+                    MessageBox.Show("Lỗi khi lưu phiếu thuê: " + ex.Message);
                 }
             }
         }
@@ -583,85 +1034,167 @@ namespace WindowsFormsApp1
         private int GetNextId(SqlConnection conn, SqlTransaction transaction, string tableName, string columnName)
         {
             string sql = "SELECT ISNULL(MAX([" + columnName + "]), 0) + 1 FROM [" + tableName + "] WITH (UPDLOCK, HOLDLOCK)";
+
             SqlCommand cmd = new SqlCommand(sql, conn, transaction);
             return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
         private bool IsIdentityColumn(SqlConnection conn, SqlTransaction transaction, string tableName, string columnName)
         {
-            SqlCommand cmd = new SqlCommand(@"SELECT COLUMNPROPERTY(OBJECT_ID(@tableName), @columnName, 'IsIdentity')", conn, transaction);
+            SqlCommand cmd = new SqlCommand(
+                @"SELECT COLUMNPROPERTY(OBJECT_ID(@tableName), @columnName, 'IsIdentity')",
+                conn,
+                transaction
+            );
+
             cmd.Parameters.AddWithValue("@tableName", "dbo." + tableName);
             cmd.Parameters.AddWithValue("@columnName", columnName);
+
             object result = cmd.ExecuteScalar();
-            if (result == null || result == DBNull.Value) return false;
+
+            if (result == null || result == DBNull.Value)
+                return false;
+
             return Convert.ToInt32(result) == 1;
         }
 
         private bool ColumnExists(SqlConnection conn, SqlTransaction transaction, string tableName, string columnName)
         {
             SqlCommand cmd = new SqlCommand(
-                @"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @tableName AND COLUMN_NAME = @columnName", conn, transaction);
+                @"SELECT COUNT(*)
+                  FROM INFORMATION_SCHEMA.COLUMNS
+                  WHERE TABLE_SCHEMA = 'dbo'
+                    AND TABLE_NAME = @tableName
+                    AND COLUMN_NAME = @columnName",
+                conn,
+                transaction
+            );
+
             cmd.Parameters.AddWithValue("@tableName", tableName);
             cmd.Parameters.AddWithValue("@columnName", columnName);
+
             return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
         }
 
         private bool TryParseMoney(string text, out decimal value)
         {
             value = 0;
-            if (string.IsNullOrWhiteSpace(text)) return false;
-            string cleaned = text.Trim().Replace(" ", "").Replace(",", "").Replace(".", "");
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            string cleaned = text.Trim();
+            cleaned = cleaned.Replace("VNĐ", "");
+            cleaned = cleaned.Replace("VND", "");
+            cleaned = cleaned.Replace("vnđ", "");
+            cleaned = cleaned.Replace("vnd", "");
+            cleaned = cleaned.Replace("đ", "");
+            cleaned = cleaned.Replace("Đ", "");
+            cleaned = cleaned.Replace(" ", "");
+            cleaned = cleaned.Replace(",", "");
+            cleaned = cleaned.Replace(".", "");
+
             return decimal.TryParse(cleaned, out value);
         }
 
         private void btn_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Bạn có chắc chắn muốn làm mới phiếu thuê?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (result == DialogResult.Yes)
-            {
-                ResetFormPhieuThue();
-            }
+            LamMoiPhieuThue();
         }
 
-        void LamMoiSauKhiLuu()
+        private void LamMoiPhieuThue()
+        {
+            DialogResult result = MessageBox.Show(
+                "Bạn có chắc chắn muốn làm mới phiếu thuê không?",
+                "Xác nhận làm mới",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+
+            if (result == DialogResult.No)
+            {
+                return;
+            }
+
+            ResetFormPhieuThue();
+            MessageBox.Show("Đã làm mới phiếu thuê.");
+        }
+
+        private void LamMoiSauKhiLuu()
         {
             ResetFormPhieuThue();
         }
 
-        void ResetFormPhieuThue()
+        private void ResetFormPhieuThue()
         {
-            txtTimKiemKH.Clear(); txtTimKiemMA.Clear();
-            txtHoTen.Clear(); txtSDT.Clear(); txtDiaChi.Clear(); txtEmail.Clear(); txtCCCD.Clear();
-            dtpNgayLap.Value = DateTime.Now; dtpNgayNhan.Value = DateTime.Now; dtpNgayTra.Value = DateTime.Now;
-            txtGioThue.Clear(); txtNgayThue.Clear();
-            txtTongSoMay.Clear(); txtTongTienThue.Clear(); txtTienCoc.Clear(); txtTaiSanCoc.Clear();
-            dataGridView3.Rows.Clear();
-            cbPin.Checked = false; cbHatSang.Checked = false; cbChanMay.Checked = false; cbFlash.Checked = false;
-            txtPin.Text = "0"; txtSLHatSang.Text = "0"; txtSLChanMay.Text = "0"; txtSLFlash.Text = "0";
-            LoadDuLieu();
-        }
+            // 1. Xóa ô tìm kiếm
+            txtTimKiemKH.Clear();
+            txtTimKiemMA.Clear();
 
-        private void btnDangXuat_Click(object sender, EventArgs e)
-        {
-            DialogResult result = MessageBox.Show("Bạn có chắc chắn muốn đăng xuất không?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (result == DialogResult.Yes)
-            {
-                DangNhap frm = new DangNhap();
-                frm.Show();
-                this.Hide();
-            }
+            // 2. Xóa thông tin khách hàng
+            txtHoTen.Clear();
+            txtSDT.Clear();
+            txtDiaChi.Clear();
+            txtEmail.Clear();
+            txtCCCD.Clear();
+
+            // 3. Reset ngày tháng về hiện tại
+            dtpNgayLap.Value = DateTime.Now;
+            dtpNgayNhan.Value = DateTime.Now;
+            dtpNgayTra.Value = DateTime.Now;
+
+            // 4. Xóa thời gian thuê
+            txtGioThue.Clear();
+            txtNgayThue.Clear();
+
+            // 5. Xóa thông tin tổng phiếu thuê
+            txtTongSoMay.Clear();
+            txtTongTienThue.Clear();
+            txtTienCoc.Clear();
+            txtTaiSanCoc.Clear();
+
+            // 6. Xóa danh sách máy đã thêm vào phiếu thuê
+            dataGridView3.Rows.Clear();
+
+            // 7. Reset checkbox phụ kiện
+            cbPin.Checked = false;
+            cbHatSang.Checked = false;
+            cbChanMay.Checked = false;
+            cbFlash.Checked = false;
+
+            // 8. Reset số lượng phụ kiện đang có
+            txtPin.Text = "0";
+            txtSLHatSang.Text = "0";
+            txtSLChanMay.Text = "0";
+            txtSLFlash.Text = "0";
+
+            // 9. Reset số lượng phụ kiện thuê
+
+            // 10. Load lại dữ liệu ban đầu từ SQL
+            LoadDuLieu();
+
+            // 11. Bỏ chọn dòng trong các bảng
+            dataGridView1.ClearSelection();
+            dataGridView2.ClearSelection();
+            dataGridView3.ClearSelection();
         }
 
         private void btnTrangChu_Click(object sender, EventArgs e)
         {
+            FormTrangChu TC = new FormTrangChu();
+            TC.Show();
             this.Close();
         }
 
-        private void btnPhuKien_Click(object sender, EventArgs e) { }
-        private void button1_Click(object sender, EventArgs e) { }
-        private void dataGridView3_CellContentClick(object sender, DataGridViewCellEventArgs e) { }
+        private void btnPhieuTra_Click(object sender, EventArgs e)
+        {
+            FormPhieuTra PTR = new FormPhieuTra();
+            PTR.Show();
+            this.Close();
+        }
 
-        // Gọi form In ấn và nạp chính xác dữ liệu từ GridView theo tên Cột
         private void btnIn_Click(object sender, EventArgs e)
         {
             string hinhThucThue = "";
@@ -710,6 +1243,12 @@ namespace WindowsFormsApp1
                 string tongSoMay = txtTongSoMay.Text.Trim();
                 string tongTienThue = txtTongTienThue.Text.Trim();
 
+                decimal tongTienThueValue = 0;
+                decimal.TryParse(txtTongTienThue.Text.Replace(".", "").Replace(",", ""), out tongTienThueValue);
+
+                decimal tienCocValue = 0;
+                decimal.TryParse(txtTienCoc.Text.Replace(".", "").Replace(",", ""), out tienCocValue);
+
                 // Tạo DataTable chi tiết
                 DataTable dtChiTiet = TaoBangChiTiet();
 
@@ -727,33 +1266,39 @@ namespace WindowsFormsApp1
                     string soLuong = row.Cells["SoLuong"].Value?.ToString() ?? "1";
                     string thanhTien = row.Cells["ThanhTien"].Value?.ToString() ?? "0";
 
-                    // ← CHỈ THÊM 6 DÒNG NÀY (không thêm foreach mới)
-                    string soGioThue = "";
-                    string soNgayThue = "";
+                    decimal donGiaValue = 0;
+                    decimal thanhTienValue = 0;
+
+                    decimal.TryParse(row.Cells["DonGia"].Value?.ToString(), out donGiaValue);
+                    decimal.TryParse(row.Cells["ThanhTien"].Value?.ToString(), out thanhTienValue);
+
+                    int soGioThue = 0;
+                    int soNgayThue = 0;
+                    string thoiGianThueValue = row.Cells["ThoiGianThue"].Value?.ToString() ?? "";
+
                     if (thoiGianThue.EndsWith(" ngày"))
-                        soNgayThue = thoiGianThue.Replace(" ngày", "").Trim();
+                        soNgayThue = int.Parse(thoiGianThue.Replace(" ngày", "").Trim());
                     else if (thoiGianThue.EndsWith(" giờ"))
-                        soGioThue = thoiGianThue.Replace(" giờ", "").Trim();
+                        soGioThue = int.Parse(thoiGianThue.Replace(" giờ", "").Trim());
 
-                    // ← CẬP NHẬT Rows.Add (thêm soGioThue, soNgayThue vào giữa)
                     dtChiTiet.Rows.Add(
-                        maMay,
-                        tenMay,
-                        serial,
-                        donGia,         // giaThueTheoGio
-                        donGia,         // giaThueTheoNgay
-                        soGioThue,      // ← THÊM
-                        soNgayThue,     // ← THÊM — sẽ = "2" khi thuê 2 ngày
-                        thoiGianThue,
-                        thanhTien,
-                        tongSoMay,
-                        tongTienThue,
-                        tienCoc
-                    );
-                }
+                          row.Cells["MaMay"].Value?.ToString() ?? "",
+                          row.Cells["TenMay"].Value?.ToString() ?? "",
+                          row.Cells["GhiChu"].Value?.ToString() ?? "Sẵn sàng",
+                            donGiaValue,       // decimal
+                            donGiaValue,       // decimal
+                            soGioThue,         // int
+                            soNgayThue,        // int
+                            thoiGianThue,      // string
+                            thanhTienValue,    // decimal
+                            int.Parse(txtTongSoMay.Text),
+                            tongTienThueValue, // decimal
+                             tienCocValue       // decimal
+);
+                   
 
-                // Mở form in phiếu
-                FormInPhieu frmIn = new FormInPhieu(
+                    // Mở form in phiếu
+                    FormInPhieu frmIn = new FormInPhieu(
                     dtChiTiet,
                     hoTen,
                     sdt,
@@ -769,7 +1314,8 @@ namespace WindowsFormsApp1
                     tongTienThue,
                     hinhThucThue);
 
-                frmIn.ShowDialog();
+                    frmIn.ShowDialog();
+                }
             }
             catch (Exception ex)
             {
@@ -788,17 +1334,88 @@ namespace WindowsFormsApp1
             dt.Columns.Add("maMay", typeof(string));
             dt.Columns.Add("tenMay", typeof(string));
             dt.Columns.Add("soSerial", typeof(string));
-            dt.Columns.Add("giaoThueTheoGio", typeof(string));
-            dt.Columns.Add("giaThueTheoNgay", typeof(string));
-            dt.Columns.Add("soGioThue", typeof(string)); // ← THÊM MỚI
-            dt.Columns.Add("soNgayThue", typeof(string)); // ← THÊM MỚI
+            dt.Columns.Add("giaoThueTheoGio", typeof(decimal));   // decimal
+            dt.Columns.Add("giaThueTheoNgay", typeof(decimal));     // decimal
+            dt.Columns.Add("soGioThue", typeof(int));             // số giờ kiểu int
+            dt.Columns.Add("soNgayThue", typeof(int));            // số ngày kiểu int
             dt.Columns.Add("thoiGianThue", typeof(string));
-            dt.Columns.Add("thanhTien", typeof(string));
-            dt.Columns.Add("tongSoMayThue", typeof(string));
-            dt.Columns.Add("tongTienThue", typeof(string));
-            dt.Columns.Add("tienCoc", typeof(string));
+            dt.Columns.Add("thanhTien", typeof(decimal));          // decimal
+            dt.Columns.Add("tongSoMayThue", typeof(int));
+            dt.Columns.Add("tongTienThue", typeof(decimal));
+            dt.Columns.Add("tienCoc", typeof(decimal));
 
             return dt;
+        }
+
+        private void btnTrangChu_Click_1(object sender, EventArgs e)
+        {
+            FormTrangChu FTC = new FormTrangChu();
+            FTC.Show();
+            this.Close();
+        }
+
+       /* private void btnMayAnh_Click(object sender, EventArgs e)
+        {
+            MayAnh Ma = new MayAnh();
+            Ma.Show();
+            this.Close();
+        }
+       */
+        private void bntPhuKien_Click(object sender, EventArgs e)
+        {
+            FormPhuKien FPK = new FormPhuKien();
+            FPK.Show();
+            this.Close();
+        }
+
+       /* private void btnKhachHang_Click(object sender, EventArgs e)
+        {
+            KhachHang KH = new KhachHang();
+            KH.Show();
+            this.Close();
+        }
+       */
+        private void btnPhieuThue_Click(object sender, EventArgs e)
+        {
+            FormPhieuThue PT = new FormPhieuThue();
+            PT.Show();
+            this.Close();
+        }
+
+        private void btnPhieuTra_Click_1(object sender, EventArgs e)
+        {
+            FormPhieuTra PTR = new FormPhieuTra();
+            PTR.Show();
+            this.Close();
+        }
+
+        private void btnHoaDon_Click(object sender, EventArgs e)
+        {
+            FormHoaDon FHD = new FormHoaDon();
+            FHD.Show();
+            this.Close();
+        }
+
+        private void btnThongKe_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnDangXuat_Click_1(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+              "Bạn có chắc chắn muốn đăng xuất không?",
+              "Xác nhận",
+              MessageBoxButtons.YesNo,
+              MessageBoxIcon.Question
+          );
+
+            if (result == DialogResult.Yes)
+            {
+                FormDangNhap frm = new FormDangNhap();
+                frm.Show();
+                this.Hide();
+            }
         }
     }
 }
